@@ -1,0 +1,18 @@
+{
+  "name": "Orbit — a quieter social network",
+  "short_name": "Orbit",
+  "description": "An offline-first social feed for photos, notes and the people you follow.",
+  "start_url": "/feed",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#0a0a0c",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

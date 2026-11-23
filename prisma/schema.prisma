@@ -1,0 +1,151 @@
+// Orbit — Prisma schema
+// Prisma 7 (prisma-client generator + driver adapter)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  name         String
+  bio          String?  @db.VarChar(160)
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Denormalised counters. Kept in sync inside the same transaction as the
+  // write that changes them, so reads never need COUNT(*).
+  postCount      Int @default(0)
+  followerCount  Int @default(0)
+  followingCount Int @default(0)
+
+  posts              Post[]
+  likes              Like[]
+  comments           Comment[]
+  sessions           Session[]
+  following          Follow[]       @relation("Follower")
+  followers          Follow[]       @relation("Following")
+  notifications      Notification[] @relation("NotificationRecipient")
+  actedNotifications Notification[] @relation("NotificationActor")
+
+  @@index([createdAt])
+}
+
+/// Refresh-token session. The raw token never touches the database — only its
+/// SHA-256 hash does, so a database leak cannot be replayed as a login.
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  lastUsedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Post {
+  id           String   @id @default(cuid())
+  authorId     String
+  caption      String   @db.VarChar(2200)
+  imageUrl     String?
+  imageWidth   Int?
+  imageHeight  Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  likeCount    Int @default(0)
+  commentCount Int @default(0)
+
+  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes        Like[]
+  comments     Comment[]
+  notifications Notification[]
+
+  @@index([createdAt, id])
+  @@index([authorId, createdAt, id])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId, createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String   @db.VarChar(1000)
+  parentId  String?
+  createdAt DateTime @default(now())
+
+  post     Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author   User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent   Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[]     @relation("CommentReplies")
+  notifications Notification[]
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId, createdAt])
+  @@index([followerId, createdAt])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  actorId     String
+  type        NotificationType
+  postId      String?
+  commentId   String?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  recipient User     @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User     @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, readAt])
+}

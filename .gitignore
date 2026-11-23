@@ -1,0 +1,49 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+.next/
+out/
+next-env.d.ts
+
+# production
+build/
+dist/
+
+# testing
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+e2e/.auth/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# database
+*.db
+*.db-journal
+
+# uploads (local storage adapter)
+public/uploads/
+
+# generated prisma client
+src/generated/
+
+# misc
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+.vercel
+.idea/
+.vscode/*
+!.vscode/extensions.json
+tsconfig.tsbuildinfo
+.eslint-report.json
